@@ -32,13 +32,13 @@ namespace TS3DiscordBridge
                 string configString = File.ReadAllText(configFile);
                 var options = new JsonSerializerOptions { IncludeFields = true, };
                 var deserializeddata = System.Text.Json.JsonSerializer.Deserialize<botConfigHandler>(configString, options);
-                    if (deserializeddata != null)
-                    {
-                        return deserializeddata;
-                    }
-                    else
-                    {
-                        Console.WriteLine("CONFIG READ FAILED!");
+                if (deserializeddata != null)
+                {
+                    return deserializeddata;
+                }
+                else
+                {
+                    Console.WriteLine("CONFIG READ FAILED!");
                     throw new Exception("Config Deserialise Failed.");
                 }
             }
@@ -48,7 +48,7 @@ namespace TS3DiscordBridge
             }
         }
 
-        public void createConfig()
+        public async Task createConfig()
         {
             if (!Directory.Exists(directoryPath))
             {
@@ -61,19 +61,21 @@ namespace TS3DiscordBridge
                 Console.WriteLine("Creating Boilerplate config file.");
                 botConfigHandler config = new botConfigHandler();
                 using (File.Create(configFile))
-                    DumpConfigToJSON(config);
+                await DumpConfigToJSON(config);
 
             }
         }
 
-        public bool DumpConfigToJSON(botConfigHandler instanceToDumpToJSON)
+        public async Task DumpConfigToJSON(botConfigHandler instanceToDumpToJSON)
         {
-            var options = new JsonSerializerOptions { IncludeFields = true, WriteIndented = true };
+            //TODO: rewrite this function to collect all necesarry classes and dump them all to disk.
+
+            var options = new JsonSerializerOptions { IncludeFields = true, WriteIndented = true, };
             string jsondump = JsonSerializer.Serialize(instanceToDumpToJSON, options);
-            File.WriteAllText(configFile, jsondump);
+            await Task.Run(() => File.WriteAllText(configFile, jsondump));
             if (File.Exists(configFile) && File.ReadAllText(configFile) == jsondump)
-            { Console.WriteLine("Config Succussfully written to disk"); return true; }
-            else { Console.WriteLine("Config failed to write to disk."); return false; }
+            { Console.WriteLine("Config Succussfully written to disk"); }
+            else { Console.WriteLine("Config failed to write to disk."); }
         }
 
         public string getBotToken()

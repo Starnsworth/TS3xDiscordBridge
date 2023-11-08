@@ -1,10 +1,9 @@
 ﻿using Discord;
 using Discord.WebSocket;
-using System.Net.NetworkInformation;
 
 namespace TS3DiscordBridge
 {
-     //TODO: After Compare User lists, Ping discord users where no match is found.
+    //TODO: After Compare User lists, Ping discord users where no match is found.
     internal class discordHandler
     {
         //fields to keep track of.
@@ -40,6 +39,10 @@ namespace TS3DiscordBridge
                 case "trigger-get-last-messages":
                     await GetLastMessageAsync(command);
                     break;
+                case "test-scheduler":
+                    await CreateCustomScheduledItem(command);
+                    break;
+
             }
         }
 
@@ -55,12 +58,11 @@ namespace TS3DiscordBridge
             //Data Transformations so we can do what we need to.
             string newHostname = (string)InputArray[0].Value;
             var newServerID = (long)InputArray[1].Value;
-            var newChanID = (long)InputArray[2].Value;
-            string newUsernameHR = (string)InputArray[3];
-            string newChanHR = (string)InputArray[4];
-            var newChanType = InputArray[4].Value as ITextChannel;
+            string newUsernameHR = (string)InputArray[2];
+            string newChanHR = (string)InputArray[3];
+            var newChanType = InputArray[3].Value as ITextChannel;
             var newChannelID = newChanType.Id;
-            var userTypeCast = InputArray[3].Value as IGuildUser;
+            var userTypeCast = InputArray[2].Value as IGuildUser;
             var newUserID = userTypeCast.Id;
             var strNewUserID = newUserID.ToString();
             var strNewChannelID = newChannelID.ToString();
@@ -68,18 +70,19 @@ namespace TS3DiscordBridge
 
             //create instance of config handler
             botConfigHandler newConfig = new botConfigHandler();
-            newConfig.setConfigValues(newHostname, Convert.ToInt32(newServerID), Convert.ToInt32(newChanID), strNewUserID, strNewChannelID, newChanHR, newUsernameHR); //Push new configs to json
-            FileOperations x = new(); _ = x.DumpConfigToJSON(newConfig);
+            newConfig.setConfigValues(newHostname, Convert.ToInt32(newServerID), strNewUserID, strNewChannelID, newChanHR, newUsernameHR); //Push new configs to json
+            FileOperations x = new(); await x.DumpConfigToJSON(newConfig);
 
             //Build the message that is shown to the user.
-            var message = "Updated Settings:\nHostname: `" + newHostname
-            + "`\nTS3 Virtual Server ID: `" + newServerID + "`\nTS3 Channel ID: `" + newChanID
-            + "`\nWatched Discord User: `" + newUsernameHR + "`\nWatched User UUID: `" + newUserID + "`\nWatched Channel: `" + newChanHR
-            + "`\nWatched Channel UUID: `" + newChannelID + "`";
+            var message = "Updated Settings:\nHostname: " + "`" + newConfig.StrSavedTeamspeakHostName + "` "
+            + "\nTS3 Virtual Server ID: " + "`" + newConfig.IntSavedTeamspeakVirtualServerID + "`"
+            + "\nWatched Discord User: " + "`" + newConfig.StrWatchedDiscordUserName + "`"
+            + "\nWatched User UUID: " + "`" + newConfig.StrWatchedDiscordUserID + "`"
+            + "\nWatched Channel: " + "`" + newConfig.StrWatchedDiscordChannelName + "`"
+            + "\nWatched Channel UUID: `" + newConfig.StrWatchedDiscordChannelID + "`";
 
             //Build the embed thats shown to the user
-            var embedBuild = new EmbedBuilder().WithAuthor("TS3xDiscord Bridge").WithTitle("Config Updated Successfully").WithDescription(message).WithCurrentTimestamp().WithColor(Color.Green);
-
+            var embedBuild = SlashCommandConstructors.constructEmbedForResponse(message, Color.Green, "Config Updated Successfully!");
             await command.ModifyOriginalResponseAsync(x => x.Embed = embedBuild.Build()); //Use original responce position to reply to user.
 
             //force an update of the current config context so that the values are available in memory and we're not waisting time doing disk things.
@@ -114,12 +117,45 @@ namespace TS3DiscordBridge
 
                 if (message.Author.Id == desiredID && (message.Timestamp >= DateTimeOffset.UtcNow.AddHours(-1))) //Check if correct author and if message is recent enough
                 {
-                    currentCandidate.assignFields(message.Id,message.Timestamp);
+                    currentCandidate.assignFields(message.Id, message.Timestamp);
                     return currentCandidate;
                 }
                 return currentCandidate;
             }
             return currentCandidate;
+        }
+
+        public async Task CreateCustomScheduledItem(SocketSlashCommand command)
+        {
+            await command.DeferAsync(true); //Defer the responce because we need to know the outcome of the operation so we can respond appropriately.
+            TaskScheduling taskScheduling = new TaskScheduling();
+
+
+            var args = command.Data.Options.ToArray();
+            //DATA ORDER
+            // (int)DAY -> (int)HOUR ->(int)MINUTE
+            var test = Enum.GetName(typeof(DayOfWeek), args[0].Value); //Make args[0] into something DayOfWeek can read.
+
+
+            DayOfWeek day = (DayOfWeek)Enum.Parse(typeof(DayOfWeek), Enum.GetName(typeof(DayOfWeek), args[0].Value), true);
+            int hour = Convert.ToInt32(args[1].Value);
+            int minute = Convert.ToInt32(args[2].Value);
+
+
+            if ((hour <= 24 && minute <= 60 && hour >= 0 && minute >= 0) == false)
+            {
+                var setCustomDateTimeFail = SlashCommandConstructors.constructEmbedForResponse("Malformed data provided as custom operation time!", Color.Red);
+                await command.ModifyOriginalResponseAsync(x => x.Embed = setCustomDateTimeFail.Build());
+            }
+            else
+            {
+                taskScheduling.SetCustomRequiredDateTime(day, hour, minute); //userland command that can get called by the slash command.
+                var setCustomDateTimeSuccess = SlashCommandConstructors.constructEmbedForResponse(taskScheduling.getRequiredDateTime(), Color.Green, "Custom Time Set Successfully!");
+                await command.ModifyOriginalResponseAsync(x => x.Embed = setCustomDateTimeSuccess.Build());
+            }
+
+
+
         }
     }
 }

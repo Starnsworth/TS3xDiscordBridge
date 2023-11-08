@@ -66,14 +66,15 @@ namespace TS3DiscordBridge
 
         public async Task MainAsync()
         {
+            SlashCommandConstructors x = new SlashCommandConstructors();
             instantiateConfigHandler();
             client.Log += Log;
 
             await client.LoginAsync(TokenType.Bot, fileio.getBotToken());
             await client.StartAsync();
-            SlashCommandConstructors x = new SlashCommandConstructors();
+            
             client.SlashCommandExecuted += discordHandler.SlashCommandHandler;
-            client.Ready += x.registerGuildCommand;
+            //client.Ready += x.RegisterGuildCommand;
            
 
             //Block task until closed

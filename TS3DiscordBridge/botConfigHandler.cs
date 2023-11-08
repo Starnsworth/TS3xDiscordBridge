@@ -28,12 +28,12 @@
 
         public string[] getSavedTeamspeakServerData()
         {
-            string[] savedData = new string[3];
+            string[] savedData = new string[2];
             savedData[0] = StrSavedTeamspeakHostName;
-            savedData[2] = StrWatchedDiscordUserID.ToString();
+            savedData[1] = StrWatchedDiscordUserID.ToString();
             return savedData;
         }
-        public void setConfigValues(string newHostname, int virtualServerID, int tsChannelID, string discUserUUID, string discChannelUUID, string discChannelName, string discUserName)
+        public void setConfigValues(string newHostname, int virtualServerID, string discUserUUID, string discChannelUUID, string discChannelName, string discUserName)
         {
             StrSavedTeamspeakHostName = newHostname;
             IntSavedTeamspeakVirtualServerID = virtualServerID;
@@ -41,7 +41,9 @@
             StrWatchedDiscordChannelID = discChannelUUID;
             StrWatchedDiscordChannelName = discChannelName;
             StrWatchedDiscordUserName = discUserName;
+            lastConfigUpdateFromDisk = DateTime.Now;
             
+
         }
     }
 
