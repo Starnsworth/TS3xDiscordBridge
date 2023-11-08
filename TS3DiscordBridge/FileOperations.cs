@@ -24,13 +24,23 @@ namespace TS3DiscordBridge
             return false;
         }
 
-        public string retrieveStoredConfig()
+        public botConfigHandler retrieveStoredConfig()
         {
             Console.WriteLine("Using Config " + configFile);
             if (File.Exists(configFile))
             {
                 string configString = File.ReadAllText(configFile);
-                return configString;
+                var options = new JsonSerializerOptions { IncludeFields = true, };
+                var deserializeddata = System.Text.Json.JsonSerializer.Deserialize<botConfigHandler>(configString, options);
+                    if (deserializeddata != null)
+                    {
+                        return deserializeddata;
+                    }
+                    else
+                    {
+                        Console.WriteLine("CONFIG READ FAILED!");
+                    throw new Exception("Config Deserialise Failed.");
+                }
             }
             else
             {

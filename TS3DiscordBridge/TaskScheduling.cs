@@ -16,5 +16,28 @@ namespace TS3DiscordBridge
 
     internal class TaskScheduling
     {
+        
+        DateTime requiredDateTime = new DateTime();
+
+        //Need to know the day
+        public TaskScheduling()
+        {
+            //Set requiredDateTime to the closest tuesday or sunday.
+            DateTime currentDateTime= DateTime.Now;
+
+            var currentDay = currentDateTime.DayOfWeek;
+            Console.WriteLine(currentDay.ToString());
+            Thread.Sleep(100);
+
+            if (currentDateTime.DayOfWeek.ToString() == "Monday" || currentDateTime.DayOfWeek.ToString() == "Tuesday")
+            {
+                //set required DateTime
+            }
+
+
+        }
+
+        //need to know the time
+
     }
 }

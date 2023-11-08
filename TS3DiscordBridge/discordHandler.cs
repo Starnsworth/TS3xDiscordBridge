@@ -107,6 +107,7 @@ namespace TS3DiscordBridge
 
         public currentlyHandledMessage parseMessageCollection(IEnumerable<IMessage> messages, ulong desiredID)
         {
+
             currentlyHandledMessage currentCandidate = new currentlyHandledMessage();
             foreach (var message in messages)
             {

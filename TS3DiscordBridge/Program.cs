@@ -126,10 +126,10 @@ namespace TS3DiscordBridge
 
             if (fileio.checkIfConfigExist())
             {
-                string storedConfig = fileio.retrieveStoredConfig();
-                var options = new JsonSerializerOptions { IncludeFields = true, };
-                config = System.Text.Json.JsonSerializer.Deserialize<botConfigHandler>(storedConfig, options);
-                isconfigured = true;
+               config = fileio.retrieveStoredConfig();
+               isconfigured = true;
+
+
                 Console.WriteLine("Printing read-in config");
                 Console.WriteLine("\nStrSavedTeamspeakHostName: " + config.StrSavedTeamspeakHostName +
                     "\nIntSavedTeamspeakVirtualServerID: " + config.IntSavedTeamspeakVirtualServerID +

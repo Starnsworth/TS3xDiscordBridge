@@ -56,7 +56,7 @@ namespace TS3DiscordBridge
 
                 public chanUserListHandler()
                 {
-                    if (connectionData != null) { serverQueryConnector connector = new serverQueryConnector(connectionData.getServerHostAddress(), connectionData.getVirtualServerID(), connectionData.getChannelID()); }
+                    if (connectionData != null) { serverQueryConnector connector = new serverQueryConnector(connectionData.getServerHostAddress(), connectionData.getVirtualServerID()); }
                     throw new Exception("No Connection Data in object 'connectionData'. Has setupUsingExistingData method been run?");
 
                     //Telnet to the provided channel as per serverQueryConnector then parse data into above vars. Once parsed, these vars can be pushed to disk if need be.
@@ -70,7 +70,7 @@ namespace TS3DiscordBridge
                 string serverHostAddress;
                 int virtualServerID;
 
-                internal serverQueryConnector(string serverHostAddress, int virtualServerID, int chanID)
+                internal serverQueryConnector(string serverHostAddress, int virtualServerID)
                 {
                     this.serverHostAddress = serverHostAddress;
                     this.virtualServerID = virtualServerID;
