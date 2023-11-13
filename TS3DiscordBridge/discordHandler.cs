@@ -4,7 +4,7 @@ using Discord.WebSocket;
 namespace TS3DiscordBridge
 {
     //TODO: After Compare User lists, Ping discord users where no match is found.
-    internal class discordHandler
+    public class discordHandler
     {
         //fields to keep track of.
         internal class currentlyHandledMessage
@@ -24,6 +24,12 @@ namespace TS3DiscordBridge
                 UUID = uuid;
                 messageRecievedTime = msgTime;
             }
+
+            public ulong getUUID()
+            {
+                return UUID;
+            }
+
         }
         static currentlyHandledMessage currentMessage = new currentlyHandledMessage();
 
@@ -35,9 +41,6 @@ namespace TS3DiscordBridge
             {
                 case "setup-bot-config":
                     await setupBotConfig(command);
-                    break;
-                case "trigger-get-last-messages":
-                    await GetLastMessageAsync(command);
                     break;
                 case "test-scheduler":
                     await CreateCustomScheduledItem(command);
@@ -70,7 +73,7 @@ namespace TS3DiscordBridge
 
             //create instance of config handler
             botConfigHandler newConfig = new botConfigHandler();
-            newConfig.setConfigValues(newHostname, Convert.ToInt32(newServerID), strNewUserID, strNewChannelID, newChanHR, newUsernameHR); //Push new configs to json
+            newConfig.setConfigValues(newHostname, Convert.ToInt32(newServerID), strNewUserID, strNewChannelID, newChanHR, newUsernameHR, strNewChannelID); //Push new configs to json
             FileOperations x = new(); await x.DumpConfigToJSON(newConfig);
 
             //Build the message that is shown to the user.
@@ -89,9 +92,11 @@ namespace TS3DiscordBridge
         }
 
 
-        public async Task GetLastMessageAsync(SocketSlashCommand command)
+        public async Task<ulong> GetLastMessageAsync()
         {
-            await command.RespondAsync("Got It", ephemeral: true);
+            //await command.RespondAsync("Got It", ephemeral: true);
+
+
 
 
             //Get the UUID for the channel we're polling & the UUID for our expected author.
@@ -105,17 +110,18 @@ namespace TS3DiscordBridge
             currentMessage = parseMessageCollection(messages, Convert.ToUInt64(watchedDiscordUserID));
             //if message matches criteria, store details of message in a 'currentlyHandledMessage' object
 
+            return currentMessage.getUUID();
         }
 
 
-        public currentlyHandledMessage parseMessageCollection(IEnumerable<IMessage> messages, ulong desiredID)
+        internal currentlyHandledMessage parseMessageCollection(IEnumerable<IMessage> messages, ulong desiredID)
         {
 
             currentlyHandledMessage currentCandidate = new currentlyHandledMessage();
             foreach (var message in messages)
             {
 
-                if (message.Author.Id == desiredID && (message.Timestamp >= DateTimeOffset.UtcNow.AddHours(-1))) //Check if correct author and if message is recent enough
+                if (message.Author.Id == desiredID && (message.Timestamp >= DateTimeOffset.UtcNow.AddHours(-14)) && message.Reactions.Count>=1) //Check if correct author and if message is recent enough
                 {
                     currentCandidate.assignFields(message.Id, message.Timestamp);
                     return currentCandidate;
@@ -127,8 +133,10 @@ namespace TS3DiscordBridge
 
         public async Task CreateCustomScheduledItem(SocketSlashCommand command)
         {
+
+            
             await command.DeferAsync(true); //Defer the responce because we need to know the outcome of the operation so we can respond appropriately.
-            TaskScheduling taskScheduling = new TaskScheduling();
+            UserListComparison.retrieveDiscordReactionsList();
 
 
             var args = command.Data.Options.ToArray();
@@ -149,13 +157,35 @@ namespace TS3DiscordBridge
             }
             else
             {
-                taskScheduling.SetCustomRequiredDateTime(day, hour, minute); //userland command that can get called by the slash command.
-                var setCustomDateTimeSuccess = SlashCommandConstructors.constructEmbedForResponse(taskScheduling.getRequiredDateTime(), Color.Green, "Custom Time Set Successfully!");
+                Program.taskScheduling.SetCustomRequiredDateTime(day, hour, minute); //userland command that can get called by the slash command.
+                var setCustomDateTimeSuccess = SlashCommandConstructors.constructEmbedForResponse(Program.taskScheduling.getRequiredDateTime().ToString(), Color.Green, "Custom Time Set Successfully!");
                 await command.ModifyOriginalResponseAsync(x => x.Embed = setCustomDateTimeSuccess.Build());
             }
 
 
 
         }
+
+        public async Task buildMessasgeToSend()
+        {
+            Thread.Sleep(1);
+            //check the time and then do the user list comparison.
+            //Time should be 10 minutes before Program.taskScheduling.requiredDateTime
+            var requiredTime = Program.taskScheduling.requiredDateTime;
+            if (DateTime.Now >= requiredTime)
+            {
+                Console.WriteLine(DateTime.Now + " is Larger than " + requiredTime.ToString());
+            }
+            else
+            {
+                Console.WriteLine(DateTime.Now + " is smaller than " + requiredTime.ToString());
+            }
+
+            //System.Timers.Timer aTimer = new System.Timers.Timer(60000); //creates a timer aTimer that expires every minute
+
+
+
+        }
+
     }
 }

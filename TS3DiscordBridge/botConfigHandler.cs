@@ -11,6 +11,7 @@
         public string StrWatchedDiscordChannelID;
         public string StrWatchedDiscordChannelName;
         public DateTime lastConfigUpdateFromDisk;
+        public string StrDiscShoutChannel;
        
 
 
@@ -21,6 +22,7 @@
             StrWatchedDiscordChannelID ??= "defaultDiscordChannelID";
             StrWatchedDiscordChannelName ??= "defaultDiscordChannelName";
             StrWatchedDiscordUserName ??= "defaultDiscordUserName";
+            StrDiscShoutChannel = "defaultDiscordShoutChannel";
             if (IntSavedTeamspeakVirtualServerID <= 0) { IntSavedTeamspeakVirtualServerID = -1; }
         }
 
@@ -33,7 +35,7 @@
             savedData[1] = StrWatchedDiscordUserID.ToString();
             return savedData;
         }
-        public void setConfigValues(string newHostname, int virtualServerID, string discUserUUID, string discChannelUUID, string discChannelName, string discUserName)
+        public void setConfigValues(string newHostname, int virtualServerID, string discUserUUID, string discChannelUUID, string discChannelName, string discUserName, string discShoutChannel)
         {
             StrSavedTeamspeakHostName = newHostname;
             IntSavedTeamspeakVirtualServerID = virtualServerID;
@@ -42,7 +44,7 @@
             StrWatchedDiscordChannelName = discChannelName;
             StrWatchedDiscordUserName = discUserName;
             lastConfigUpdateFromDisk = DateTime.Now;
-            
+            StrDiscShoutChannel = discShoutChannel;
 
         }
     }

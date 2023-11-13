@@ -1,11 +1,5 @@
-﻿using Newtonsoft.Json.Linq;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Security.Cryptography;
-using System.Text;
-using System.Threading.Channels;
-using System.Threading.Tasks;
+﻿using Discord.Rest;
+using Discord.WebSocket;
 
 namespace TS3DiscordBridge
 {
@@ -21,5 +15,43 @@ namespace TS3DiscordBridge
 
     internal class UserListComparison
     {
+        internal static async Task<List<string>> retrieveDiscordReactionsList()
+        {
+            var dHandler = Program.discordHandler;
+            ulong messageUUID = await dHandler.GetLastMessageAsync();
+            ulong channelID = Convert.ToUInt64(Program.config.StrWatchedDiscordChannelID);
+            var ichannel = await Program.client.GetChannelAsync(channelID) as SocketTextChannel;
+            var message = await ichannel.GetMessageAsync(messageUUID);
+            var reactions = message.Reactions.ToArray();
+            //var test = reactions[0].Value as SocketReaction;
+            Thread.Sleep(100);
+
+
+            throw new NotImplementedException();
+            //Goto message
+            //Get message & it's reactions
+            //build list out of reactions
+
+
+
+
+            return new List<string>();
+        }
+
+        internal List<string> retrieveTsCurrentUserList()
+        {
+            throw new NotImplementedException();
+            //SSH into  serverQuery
+            //get the string that has everything in it
+            //parse the string to get the username, user uid, and channel id.
+
+            return new List<string>();
+        }
+
+        internal void storeListsInDB()
+        {
+            throw new NotImplementedException();
+        }
+
     }
 }
