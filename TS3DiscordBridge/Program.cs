@@ -1,7 +1,10 @@
 ﻿//Discord x Ts3 Bridge by Starns - For shouting at the jips waiting for arma (also can be modded to do more cool stuff maybe?)
 using Discord;
+using Discord.Interactions;
 using Discord.WebSocket;
-using System.Text.Json;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.VisualBasic;
+using System.Reflection;
 
 namespace TS3DiscordBridge
 {
@@ -29,39 +32,95 @@ namespace TS3DiscordBridge
 
     public class Program
     {
-        //Setting Context for use when needed
-        public static botConfigHandler config;
-        ts3Handler.serverConnectionData? connectionData;
-        bool isconfigured;
-        public static DiscordSocketClient client = new DiscordSocketClient();
-        FileOperations fileio = new FileOperations();
-        public static discordHandler discordHandler = new discordHandler();
-        public static TaskScheduling taskScheduling;
+        private readonly IServiceProvider _services;
+        private readonly DiscordSocketClient _client;
+        private readonly FileOperations _fileio;
+        private readonly TaskScheduling _taskScheduling;
+        private readonly InteractionService _interactionService;
 
-        public static Task Main(string[] args) => new Program().MainAsync();
-
-        public async Task MainAsync()
+        public Program()
         {
-            SlashCommandConstructors x = new SlashCommandConstructors();
-            await instantiateConfigHandler();
-            taskScheduling = new TaskScheduling();
-            client.Log += Log;
+            _services = CreateProvider();
+            _client = _services.GetRequiredService<DiscordSocketClient>();
+            _fileio = _services.GetRequiredService<FileOperations>();
+            _taskScheduling = _services.GetRequiredService<TaskScheduling>();
+            _interactionService = _services.GetRequiredService<InteractionService>();
+        }
 
-            await client.LoginAsync(TokenType.Bot, fileio.getBotToken());
-            await client.StartAsync();
-            
-            client.SlashCommandExecuted += discordHandler.SlashCommandHandler;
-            //client.Ready += x.RegisterGuildCommand;
-           
+        static IServiceProvider CreateProvider()
+        {
+
+            var config = new DiscordSocketConfig()
+            {
+                //GatewayIntents = GatewayIntents.None 
+            };
+            var interactionConfig = new InteractionServiceConfig()
+            {
+
+            };
+            //var servConfig = new XServiceConfig()
+            //{
+            //    //...
+            //};
+
+            var collection = new ServiceCollection()
+                    .AddSingleton(config)
+                    .AddSingleton<DiscordSocketClient>()
+                    .AddSingleton<botConfig>()
+                    .AddSingleton<TaskScheduling>()
+                    .AddSingleton(interactionConfig)
+                    .AddSingleton<InteractionService>()
+                    .AddTransient<FileOperations>()
+                    .AddTransient<discordHandler>()
+                    .AddTransient<UserListComparison>()
+                    .AddTransient<SlashCommandModule>()
+                    ;
+            return collection.BuildServiceProvider();
+        }
+
+
+        //Setting Context for use when needed
+        //public static botConfig config;
+        //public static DiscordSocketClient client = new DiscordSocketClient();
+        //FileOperations fileio = new FileOperations();
+        //public static discordHandler discordHandler = new discordHandler();
+        //public static TaskScheduling taskScheduling;
+        //public static InteractionService interactionService = new InteractionService(client);
+        static void Main(string[] args) => new Program().MainAsync(args).GetAwaiter().GetResult();
+
+
+
+        public async Task MainAsync(string[] args)
+        {
+            await instantiateConfigHandler();
+            var taskScheduling = _services.GetRequiredService<TaskScheduling>(); //set next instance of requiredDateTime.
+            _client.Log += Log;
+            _client.InteractionCreated += InteractionCreated;
+            _interactionService.Log += Log;
+            await _client.LoginAsync(Discord.TokenType.Bot, _services.GetRequiredService<FileOperations>().getBotToken());
+            await _client.StartAsync();
+
+            _client.Ready += ClientOnReady;
+
+
 
             //Block task until closed
             await Task.Delay(-1);
         }
 
-        //public async Task StupidFuckingLoop()
-        //{
-        //    discordHandler.GetLastMessageAsync();
-        //}
+        private async Task InteractionCreated(SocketInteraction arg)
+        {
+            var context = new SocketInteractionContext(_client, arg);
+            await _services.GetRequiredService<InteractionService>().ExecuteCommandAsync(context, _services);
+        }
+        private async Task ClientOnReady()
+        {
+            //await _clearRegisteredSlashCommands();
+            await _interactionService.AddModulesAsync(Assembly.GetEntryAssembly(), _services);
+            await _interactionService.RegisterCommandsToGuildAsync(175936015414984704);
+
+
+        }
 
         private Task Log(LogMessage message)
         {
@@ -69,59 +128,21 @@ namespace TS3DiscordBridge
             return Task.CompletedTask;
         } //Log messages from gateway
 
-        private bool SetupTS3ConnectionUsingStoredData()
-        {   //Retrieve parameters from config stored in memory and store them somewhere we can handle them.
-            string[] existingData = config.getSavedTeamspeakServerData();
-            string existingHost = existingData[0];
-            int existingServerID = int.Parse(existingData[1]);
-            int existingChanID = int.Parse(existingData[2]);
-
-            try
-            {
-                if (connectionData == null)
-                { //If connectionData is not instantiated. Create instance of object using the retrieved parameters.
-                    connectionData = new ts3Handler.serverConnectionData(existingHost, existingServerID, existingChanID);
-                    return true;
-                }
-                else
-                {
-                    throw new Exception("connectionData already Setup."); //If instance exists, throw an error.
-                }
-            }
-            catch (Exception e)
-            {
-                Console.WriteLine($"{e.Message}");
-                return false;
-            }
-        }
         private async Task clearRegisteredSlashCommands()
         {
-            var guild = client.GetGuild(175936015414984704);
+            var guild = _client.GetGuild(175936015414984704);
             await guild.DeleteApplicationCommandsAsync();
         }
         private async Task instantiateConfigHandler() //Check for valid config. If no valid config, create one for user to populate.
         {
-
-            if (fileio.checkIfConfigExist())
+            if (_fileio.checkIfConfigExist())
             {
-               config = fileio.retrieveStoredConfig();
-               isconfigured = true;
-
-
-                //Console.WriteLine("Printing read-in config");
-                //Console.WriteLine("\nStrSavedTeamspeakHostName: " + config.StrSavedTeamspeakHostName +
-                //    "\nIntSavedTeamspeakVirtualServerID: " + config.IntSavedTeamspeakVirtualServerID +
-                //    "\nStrWatchedDiscordUserID: " + config.StrWatchedDiscordUserID                   +
-                //    "\nStrWatchedDiscordUserName: " + config.StrWatchedDiscordUserName               +
-                //    "\nStrWatchedDiscordChannelID: " + config.StrWatchedDiscordChannelID             +
-                //    "\nStrWatchedDiscordChannelName: " + config.StrWatchedDiscordChannelName         +
-                //    "\nlastConfigUpdateFromDisk: "+ config.lastConfigUpdateFromDisk +"\n");                
+                _fileio.retrieveStoredConfig();
             }
             else
             {
-                await fileio.createConfig();
-                isconfigured = false;
-
+                await _fileio.createConfig();
+                
             }
         }
     }

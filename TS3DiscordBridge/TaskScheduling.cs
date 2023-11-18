@@ -1,14 +1,21 @@
-﻿namespace TS3DiscordBridge
+﻿using Microsoft.Extensions.DependencyInjection;
+using System.Threading;
+
+namespace TS3DiscordBridge
 {
     /*
      * function: Sundays & Tuesdays, check in 3x to ensure valid data.
-     * TODO: Timer Functionality to check in at the correct times.
-     *      TODO: slash command so staff can create custom times to sound off.
+     * DONE: Timer Functionality to check in at the correct times.
+     *      DONE: slash command so staff can create custom times to sound off.
      */
 
 
     public class TaskScheduling
     {
+        //private readonly IServiceProvider _provider;
+        private readonly botConfig _botConfig;
+        private readonly TaskScheduling _taskScheduling;
+
 
         internal DateTime requiredDateTime = new DateTime(); // this will get passed to some function inside of discordHandler
         string? TaskName;
@@ -17,11 +24,14 @@
         /// <summary>
         /// sets the requiredDateTime field of the TaskScheduling class to the default
         /// </summary>
-        internal TaskScheduling() //Presets requiredDateTime to the next occurance of tuesday or sunday
+        public TaskScheduling(botConfig botConfig) //Presets requiredDateTime to the next occurance of tuesday or sunday
         {
+
+            _botConfig = botConfig;
+
             //Set requiredDateTime to the closest tuesday or sunday.
             DateTime currentDateTime = DateTime.Now;
-            shoutChannel = Program.config.StrDiscShoutChannel;
+            shoutChannel = _botConfig.StrDiscShoutChannel;
             if (currentDateTime.DayOfWeek.ToString() == "Monday" || currentDateTime.DayOfWeek.ToString() == "Tuesday") // if op is on tuesday
             {
                 //set requiredDateTime to tuesday 1930
@@ -47,7 +57,7 @@
             //after setting if the next one is tuesday or sunday.
             //we need to start the daily check for what day it is.
             //so start timer here. when the check is true, we do the needful
-            TaskScheduler.Instance.ScheduleTask(18, 30, 24, checkDateTime);
+            TaskScheduler.Instance.ScheduleTask(18, 30, 24, CheckDateTime);
 
 
             //Start Debug Section
@@ -58,14 +68,14 @@
 
         }
 
-        void rebuildRequiredDateTime()
+         void rebuildRequiredDateTime()
         {
             DateTime currentDateTime = DateTime.Now;
             if (currentDateTime.DayOfWeek.ToString() == "Monday" || currentDateTime.DayOfWeek.ToString() == "Tuesday") // if op is on tuesday
             {
                 //set requiredDateTime to tuesday 1930
                 var working = SetToRequiredTime(currentDateTime, 19, 30);
-                requiredDateTime = SetNextWeekday(working, DayOfWeek.Tuesday);
+                _taskScheduling.requiredDateTime = SetNextWeekday(working, DayOfWeek.Tuesday);
 
             }
             else if (currentDateTime.DayOfWeek.ToString() == "Wednesday" || //If next op is on sunday
@@ -76,7 +86,7 @@
             {
                 //set requiredDateTime to Sunday 2030
                 var working = SetNextWeekday(currentDateTime, DayOfWeek.Sunday);
-                requiredDateTime = SetToRequiredTime(currentDateTime, 20, 30);
+                _taskScheduling.requiredDateTime = SetToRequiredTime(currentDateTime, 20, 30);
 
 
 
@@ -90,9 +100,9 @@
         /// Function should be run once daily at 1830hrs. If requiredDateTime is set to 'today', we start two timers.
         /// One timer counts down until the actual operation, the other timer counts down to approx 10 minutes prior to do the setup.
         /// </summary>
-        internal static void checkDateTime()
+        internal  void CheckDateTime()
         {
-            var timeToCheck = Program.taskScheduling.requiredDateTime;
+            var timeToCheck = _taskScheduling.requiredDateTime;
             if (timeToCheck >= DateTime.Now)
             {
                 if (timeToCheck.DayOfWeek == DateTime.Today.DayOfWeek)
@@ -102,20 +112,20 @@
                     TimeSpan timeUntilOp = timeToCheck - DateTime.Now;
                     TimeSpan tenBeforeTimeUntilOp = timeUntilOp - TimeSpan.FromMinutes(10);
 
-                    //var UntilOpTimer = new Timer(x =>
-                    //{
-                    //    UserListComparison.FinalComparison(); //Function that actually does the comparision and shouts it at discord.
-                    //}, null, timeUntilOp, Timeout.InfiniteTimeSpan);
+                    var UntilOpTimer = new Timer(x =>
+                    {
+                        //UserListComparison.finalcomparison(); //function that actually does the comparision and shouts it at discord.
+                    }, null, timeUntilOp, Timeout.InfiniteTimeSpan);
 
-                    //var HalfUntilOpTimer = new Timer(x =>
-                    //{
-                    //    UserListComparison.setUpDataEarly(); //Function that starts the data collection process
-                    //}, null, tenBeforeTimeUntilOp, Timeout.InfiniteTimeSpan);
+                    var halfuntiloptimer = new Timer(x =>
+                    {
+                        //UserListComparison.setupdataearly(); //function that starts the data collection process
+                    }, null, tenBeforeTimeUntilOp, Timeout.InfiniteTimeSpan);
 
 
                     //Program.discordHandler.buildMessasgeToSend();
                 }
-                else { Program.taskScheduling.rebuildRequiredDateTime(); }
+                else { _taskScheduling.rebuildRequiredDateTime(); }
             }
         }
 
@@ -229,7 +239,7 @@
                 //then use the function it calls to check the minutes when it matters.
 
             }
-
+            //TODO: Ensure timer functionality works and isnt commented out.
             public static void testfunct()
             {
                 return;

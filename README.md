@@ -18,28 +18,32 @@ Teamspeak Permissions: b_virtualserver_select,  b_virtualserver_client_list,
 
 function: Sundays & Tuesdays, check in 3x to ensure valid data.
 
-TODO: Timer Functionality to check in at the correct times.
+==DONE: Timer Functionality to check in at the correct times.
 
-TODO: slash command so staff can create custom times to sound off.
+==DONE: slash command so staff can create custom times to sound off.
      
 function: Compare users & sound off.      
 
-TODO: Method to Build list of users who have reacted to the noti.
+==DONE: Method to Build list of users who have reacted to the noti.
 
-TODO: Method to build list of users currently in teamspeak - overall presence in the TS is good enough, we dont need a channel ID.
+==DONE: Method to build list of users currently in teamspeak - overall presence in the TS is good enough, we dont need a channel ID.
 
-TODO: Parse that huge string that gets returned on 'clientlist -uid' Need Nickname & uid.
+==DONE: Parse that huge string that gets returned on 'clientlist -uid' Need Nickname & uid.
 
-TODO: Appropriate storage of information. Guess JSON would work with a properly implimented 'users' class. Look to migrate to something else. TinyDB? Mongo? maria?
+==DONE:  Appropriate storage of information. Guess JSON would work with a properly implimented 'users' class. Look to migrate to something else. TinyDB? Mongo? maria?
              
-TODO: Compare User lists, Ping discord users where no match is found.
+==DONE: DOING Compare User lists
+
+TODO: Ping discord users where no match is found.
 
 TODO: Cleanup debug behaviour.
 
 ### Stretch Goals;
 TODO: Properly Impliment logging, failure states, and exceptions.
 
-TODO: Refactor the code so it's nicer... But fuck that.
+==DONE: Refactor the code so it's nicer... But fuck that.
+
+TODO: Refactor the code (again) so it's nice (again)... But fuck that.
 
 ### Really Stretchy Goals (Like Probably not happening);
 TODO: Impliment a webdashboard to easily relate discord users to teamspeak UUIDs
@@ -50,3 +54,4 @@ TODO: Jury rig into the training notifications and maybe ping users for that. Al
 
 # Dependencies
 .Net 6
+

@@ -2,14 +2,19 @@
 
 namespace TS3DiscordBridge
 {
-    internal class FileOperations
+    public class FileOperations
 
     //Any method or function that actually touches files belongs in here.
     {
-        public readonly string directoryPath;
-        public readonly string configFile;
-        public FileOperations()
+        private readonly botConfig _botConfig;
+         readonly string directoryPath;
+         readonly string configFile;
+
+        public string DirectoryPath { get => directoryPath; }
+
+        public FileOperations(botConfig config)
         {
+            _botConfig = config;
             directoryPath = Path.Combine(System.Environment.GetFolderPath(Environment.SpecialFolder.CommonApplicationData), "TS3 x Discord Bridge");
             configFile = Path.Combine(directoryPath, "config.json");
         }
@@ -24,17 +29,17 @@ namespace TS3DiscordBridge
             return false;
         }
 
-        public botConfigHandler retrieveStoredConfig()
+        public void retrieveStoredConfig()
         {
             Console.WriteLine("Using Config " + configFile);
             if (File.Exists(configFile))
             {
                 string configString = File.ReadAllText(configFile);
                 var options = new JsonSerializerOptions { IncludeFields = true, };
-                var deserializeddata = System.Text.Json.JsonSerializer.Deserialize<botConfigHandler>(configString, options);
+                var deserializeddata = JsonSerializer.Deserialize<botConfig>(configString, options);
                 if (deserializeddata != null)
                 {
-                    return deserializeddata;
+                   _botConfig.setConfigValues(deserializeddata);
                 }
                 else
                 {
@@ -59,17 +64,15 @@ namespace TS3DiscordBridge
             {
                 Console.WriteLine("No Config Found at :" + configFile);
                 Console.WriteLine("Creating Boilerplate config file.");
-                botConfigHandler config = new botConfigHandler();
+                var objToDump = _botConfig;
                 using (File.Create(configFile))
-                await DumpConfigToJSON(config);
+                await DumpConfigToJSON(objToDump);
 
             }
         }
 
-        public async Task DumpConfigToJSON(botConfigHandler instanceToDumpToJSON)
+        public async Task DumpConfigToJSON(botConfig instanceToDumpToJSON)
         {
-            //TODO: rewrite this function to collect all necesarry classes and dump them all to disk.
-
             var options = new JsonSerializerOptions { IncludeFields = true, WriteIndented = true, };
             string jsondump = JsonSerializer.Serialize(instanceToDumpToJSON, options);
             await Task.Run(() => File.WriteAllText(configFile, jsondump));
@@ -90,6 +93,7 @@ namespace TS3DiscordBridge
             else
             {
                 string token = File.ReadAllText(tokenPath);
+
                 return token;
             }
         }
