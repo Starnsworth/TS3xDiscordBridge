@@ -10,13 +10,14 @@ namespace TS3DiscordBridge
 
         private readonly botConfig _botConfigHandler;
         private readonly DiscordSocketClient _discordSocketClient;
-        private readonly TaskScheduling _taskScheduling;
+        private readonly OperationTimer _taskScheduling;
 
         //fields to keep track of.
 
-        public discordHandler(botConfig botConfigHandler)
+        public discordHandler(botConfig botConfigHandler, DiscordSocketClient discordSocketClient)
         {
             _botConfigHandler = botConfigHandler;
+            _discordSocketClient = discordSocketClient;
         }
 
         internal class currentlyHandledMessage
@@ -107,7 +108,7 @@ namespace TS3DiscordBridge
             else
             {
                 _taskScheduling.SetCustomRequiredDateTime(day, hour, minute); //userland command that can get called by the slash command.
-                var setCustomDateTimeSuccess = SlashCommandModule.constructEmbedForResponse(_taskScheduling.getRequiredDateTime().ToString(), Color.Green, "Custom Time Set Successfully!");
+                var setCustomDateTimeSuccess = SlashCommandModule.constructEmbedForResponse(_taskScheduling.requiredDateTime.ToString(), Color.Green, "Custom Time Set Successfully!");
                 await command.ModifyOriginalResponseAsync(x => x.Embed = setCustomDateTimeSuccess.Build());
             }
 
@@ -115,28 +116,33 @@ namespace TS3DiscordBridge
 
         }
 
-        public async Task buildMessasgeToSend()
+        public string buildLateUserMessageToSend(Dictionary<string, ulong> listOfUsersNotFound)
         {
-            Thread.Sleep(1);
+            var  messageToSend = new System.Text.StringBuilder();
+            messageToSend.Append("⏰: ");
             //check the time and then do the user list comparison.
             //Time should be 10 minutes before Program.taskScheduling.requiredDateTime
-            var requiredTime = _taskScheduling.requiredDateTime;
-            if (DateTime.Now >= requiredTime)
+            foreach (KeyValuePair<string, ulong> entry in listOfUsersNotFound)
             {
-                Console.WriteLine(DateTime.Now + " is Larger than " + requiredTime.ToString());
+               var userMention = MentionUtils.MentionUser(entry.Value);
+                messageToSend.Append(userMention + " ");
             }
-            else
-            {
-                Console.WriteLine(DateTime.Now + " is smaller than " + requiredTime.ToString());
-            }
+            return messageToSend.ToString();
+        }
 
-            //System.Timers.Timer aTimer = new System.Timers.Timer(60000); //creates a timer aTimer that expires every minute
+        //System.Timers.Timer aTimer = new System.Timers.Timer(60000); //creates a timer aTimer that expires every minute
 
-
-
+        public async Task sendDiscordMessage(string messageToSend)
+        {
+            //Send message to discord channel
+            var channel = await _discordSocketClient.GetChannelAsync(_botConfigHandler.UlongDiscShoutChannelID) as SocketTextChannel;
+            await channel.SendMessageAsync(messageToSend);
         }
 
     }
+
+    
+
 
 
 }

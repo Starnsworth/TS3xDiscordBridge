@@ -10,21 +10,27 @@ namespace TS3DiscordBridge
      */
 
 
-    public class TaskScheduling
+    public class OperationTimer
     {
         //private readonly IServiceProvider _provider;
         private readonly botConfig _botConfig;
-        private readonly TaskScheduling _taskScheduling;
+        private readonly OperationTimer _taskScheduling;
 
 
-        internal DateTime requiredDateTime = new DateTime(); // this will get passed to some function inside of discordHandler
+        internal DateTime RequiredDateTime = new DateTime();
+        public DateTime requiredDateTime
+        {
+            get { return RequiredDateTime; }
+            set { RequiredDateTime = value; }
+        }
+
         string? TaskName;
         string shoutChannel;
 
         /// <summary>
-        /// sets the requiredDateTime field of the TaskScheduling class to the default
+        /// Presets requiredDateTime to the next occurance of tuesday or sunday
         /// </summary>
-        public TaskScheduling(botConfig botConfig) //Presets requiredDateTime to the next occurance of tuesday or sunday
+        public OperationTimer(botConfig botConfig) //Change this to something that can be set by a user.
         {
 
             _botConfig = botConfig;
@@ -60,15 +66,15 @@ namespace TS3DiscordBridge
             TaskScheduler.Instance.ScheduleTask(18, 30, 24, CheckDateTime);
 
 
-            //Start Debug Section
-            Console.WriteLine("New Set Date Time is: " + currentDateTime.ToString());
-            //End Debug Section
+            //TODO: Do some actions shortly before the operation is supposed to start.
             //manipulate the hour & minutes fields to 20 and 30
             //probably in another method like getModToRequiredTime(DateTime.Hour, DateTime.Minute)
 
         }
-
-         void rebuildRequiredDateTime()
+        /// <summary>
+        /// Resets RequiredDateTime to the next occurance of tuesday or sunday.
+        /// </summary>
+         void rebuildRequiredDateTime() 
         {
             DateTime currentDateTime = DateTime.Now;
             if (currentDateTime.DayOfWeek.ToString() == "Monday" || currentDateTime.DayOfWeek.ToString() == "Tuesday") // if op is on tuesday
@@ -87,11 +93,6 @@ namespace TS3DiscordBridge
                 //set requiredDateTime to Sunday 2030
                 var working = SetNextWeekday(currentDateTime, DayOfWeek.Sunday);
                 _taskScheduling.requiredDateTime = SetToRequiredTime(currentDateTime, 20, 30);
-
-
-
-
-
             }
         }
 
@@ -130,10 +131,6 @@ namespace TS3DiscordBridge
         }
 
 
-        internal DateTime getRequiredDateTime()
-        {
-            return requiredDateTime;
-        }
 
         /// <summary>
         /// Sets the the requiredDateTime field to the designated parameters.
@@ -172,7 +169,7 @@ namespace TS3DiscordBridge
         }
 
         /// <summary>
-        /// Gets the difference between current time and the required time.
+        /// Modifies an existing DateTime object to the user specified time.
         /// </summary>
         /// <param name="objToChange">DateTime object of original time. Commonally a DateTime.Now object</param>
         /// <param name="userHH">User privded hour in 24hr time format.</param>
@@ -187,6 +184,10 @@ namespace TS3DiscordBridge
 
         }
 
+
+        /// <summary>
+        /// Class to handle the scheduling of tasks.
+        /// </summary>
         public class TaskScheduler
         {
             private static TaskScheduler _instance;
@@ -196,6 +197,14 @@ namespace TS3DiscordBridge
 
             public static TaskScheduler Instance => _instance ?? (_instance = new TaskScheduler());
 
+
+            /// <summary>
+            /// Creates a timer that runs a task at the specified time.
+            /// </summary>
+            /// <param name="hour">Hour that you want the task to run in</param>
+            /// <param name="min">Minute that you want the task to run at</param>
+            /// <param name="intervalInHour">How often you want the task to run</param>
+            /// <param name="task">Task to run. Commonly a lambda function</param>
             public void ScheduleTask(int hour, int min, double intervalInHour, Action task)
             {
                 DateTime now = DateTime.Now;
@@ -222,9 +231,9 @@ namespace TS3DiscordBridge
 
         class discDailyCheck
         {
-            //make discord send messages at the required time.
-            //pass the class the scheduled time, do everything off the scheduled time
-            //check for day on startup, use main timer to check every 12 hours what day it is.
+            //Check if discord should send messages at the required time today.
+            //set scheduledTime to requiredDateTime for the operation.
+            //check what day it is on startup, use main timer to check every 12 hours what day it is.
             //if it is a scheduled day, run the function that sends messages.
             //This function only for working out if its the correct day.
             DateTime schedueledTime;

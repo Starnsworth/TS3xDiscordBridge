@@ -97,5 +97,14 @@ namespace TS3DiscordBridge
                 return token;
             }
         }
+
+        public void writeToFile(string destinationFileName, string dataToWrite, string filetype = ".txt")
+        {
+            var writeDestination = Path.Combine(directoryPath, destinationFileName + filetype);
+            File.WriteAllText(writeDestination, dataToWrite);
+        }
+
+
+
     }
 }

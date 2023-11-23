@@ -1,8 +1,11 @@
 ﻿using Discord;
+using Discord.Commands;
 using Discord.Interactions;
 using Discord.Net;
 using Discord.WebSocket;
-using Newtonsoft.Json;
+using System.Text.Json;
+using Colour = Discord.Color;
+using Summary = Discord.Interactions.SummaryAttribute;
 
 namespace TS3DiscordBridge
 {
@@ -20,6 +23,7 @@ namespace TS3DiscordBridge
             _botConfig = botConfig;
             _fileio = fileio;
             _userListComparison = userListComparison;
+            
         }
 
         public class botConfigOptions
@@ -31,7 +35,8 @@ namespace TS3DiscordBridge
             public IChannel discordShoutChannel { get; set; }
 
             [ComplexParameterCtor]
-            public botConfigOptions([Summary(description: "IP Address or Hostname. eg:'ts.example.com' or '127.0.0.1'")] string TeamspeakServerHostname,
+            public botConfigOptions(
+                [Summary(description: "IP Address or Hostname. eg:'ts.example.com' or '127.0.0.1'")] string TeamspeakServerHostname,
                 [Summary(description: "Integer ID of the Virtual Server. Commonly '1'.")] int TeamspeakVirtualServerID,
                 [Summary(description: "Discord username to watch")] IUser watchedUser,
                 [Summary(description: "Discord Channel for bot to watch")][ChannelTypes(ChannelType.Text)] IChannel watchedChannel,
@@ -80,16 +85,16 @@ namespace TS3DiscordBridge
             + "\nShout Channel UUID: " + "`" + _botConfig.UlongDiscShoutChannelID + "`";
 
             //Build the embed thats shown to the user
-            var embedBuild = SlashCommandModule.constructEmbedForResponse(message, Color.Green, "Config Updated Successfully!");
+            var embedBuild = SlashCommandModule.constructEmbedForResponse(message, Colour.Green, "Config Updated Successfully!");
             await ModifyOriginalResponseAsync(x => x.Embed = embedBuild.Build()); //Use original response position to reply to user.
 
         }
 
-        [SlashCommand("test-db-connection", "Tests the connection to the database.")]
-        public async Task TestDBConnection()
+        [SlashCommand("test-command", "Runs a test command.")]
+        public async Task testcommand()
         {
-            await RespondAsync("Testing DB Connection", ephemeral: true);
-            _userListComparison.CompareAndRecordMatches();
+            await RespondAsync("Running Test Command.", ephemeral: true);
+            await _userListComparison.runUserComparison();
             //await DeferAsync(true);
             //var embedBuild = SlashCommandModule.constructEmbedForResponse("Test DB Connection", Color.Green, "Test DB Connection");
             //await ModifyOriginalResponseAsync(x => x.Embed = embedBuild.Build());
@@ -142,12 +147,13 @@ namespace TS3DiscordBridge
             }
             catch (ApplicationCommandException exception)
             {
-                var json = JsonConvert.SerializeObject(exception.Errors, Formatting.Indented);
+                var options = new JsonSerializerOptions { WriteIndented = true, };
+                var json = JsonSerializer.Serialize(exception.Errors, options);
                 Console.WriteLine(json);
             }
         }
 
-        internal static EmbedBuilder constructEmbedForResponse(string description, Color colour, string title = "Notice!")
+        internal static EmbedBuilder constructEmbedForResponse(string description, Colour colour, string title = "Notice!")
         {
             var embedBuilder = new EmbedBuilder()
                 .WithAuthor("TS3xDiscord Bridge", @"https://cdn.discordapp.com/avatars/144947912063975425/7dad67690c56357e737d9e0c823362bf.webp")

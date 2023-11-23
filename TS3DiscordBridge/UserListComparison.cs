@@ -1,7 +1,9 @@
 ﻿using Discord;
 using Discord.WebSocket;
 using Microsoft.Data.Sqlite;
+using System.Net.Security;
 using TeamSpeak3QueryApi.Net.Specialized;
+using static TS3DiscordBridge.DatabaseHandler;
 
 namespace TS3DiscordBridge
 {
@@ -24,31 +26,38 @@ namespace TS3DiscordBridge
         private readonly discordHandler _discordHandler;
         private readonly botConfig _botConfigHandler;
         private readonly DiscordSocketClient _discordSocketClient;
-        private readonly FileOperations _fileio;
+        private readonly DatabaseHandler _db;
 
+        Dictionary<string, ulong> discUserNotFound = new Dictionary<string, ulong>(); //Username, UID
+        Dictionary<string, ulong> discUserList = new Dictionary<string, ulong>();
+        Dictionary<string, string> tsUserList = new Dictionary<string, string>();
 
-        static Dictionary<string, ulong> discUserList = new Dictionary<string, ulong>(); //Key is plaintext username, value is the UUID
-        static Dictionary<string, string> tsUserList = new Dictionary<string, string>(); //Key is plaintext nickname, value is UID.
-        Dictionary<string, string> discUserNotFound = new Dictionary<string, string>();
-
-        public UserListComparison(discordHandler discordHandler, botConfig botConfig, DiscordSocketClient client, FileOperations fileio)
+        public UserListComparison(discordHandler discordHandler, botConfig botConfig, DiscordSocketClient client, DatabaseHandler db)
         {
             _botConfigHandler = botConfig;
             _discordHandler = discordHandler;
             _discordSocketClient = client;
-            _fileio = fileio;
+            _db = db;
         }
 
-        internal async Task retrieveDiscordReactionsList()
+        //------------------------------------------//
+
+        /// <summary>
+        /// Builds a list of users who have reacted to the notification message in discord with the prescribed emojis.
+        /// </summary>
+        /// <returns></returns>
+        internal async Task<Dictionary<string, ulong>> retrieveDiscordReactionsList()
         {
+            Dictionary<string, ulong> discUserList = new Dictionary<string, ulong>(); //Username, UID
+            //TODO: LowPri: Might be  worth making the emoji's configurable.
             var thumbEmoji = new Emoji("👍");
-            var regJ = new Emoji("🇯");
+            var regJEmoji = new Emoji("🇯");
             ulong messageUUID = await _discordHandler.GetLastMessageAsync();
             ulong channelID = Convert.ToUInt64(_botConfigHandler.UlongWatchedDiscordChannelID);
             var ichannel = await _discordSocketClient.GetChannelAsync(channelID) as SocketTextChannel;
             var message = await ichannel.GetMessageAsync(messageUUID) as IMessage;
             var ThumbReac = await message.GetReactionUsersAsync(thumbEmoji, 40).FlattenAsync();
-            var JReac = await message.GetReactionUsersAsync(regJ, 10).FlattenAsync();
+            var JReac = await message.GetReactionUsersAsync(regJEmoji, 10).FlattenAsync();
             foreach (var item in ThumbReac)
             {
                 if (!item.IsBot)
@@ -59,17 +68,23 @@ namespace TS3DiscordBridge
             }
             foreach (var item in JReac)
             {
-                if (!item.IsBot)
+                if (!item.IsBot && !discUserList.ContainsValue(item.Id))
                 {
                     discUserList.Add(item.Username.ToString(), item.Id);
                 }
             }
 
-            return;
+            return discUserList;
         }
 
-        internal async Task retrieveTsCurrentUserList()
+        /// <summary>
+        /// Builds list of users currently on the teamspeak server. we ignore exactly what channel theyre in because the TS has a single purpose.
+        /// If we look to extend functionality for use on in other communities, we can add a channelID check.
+        /// </summary>
+        /// <returns></returns>
+        internal async Task<Dictionary<string, string>> retrieveTsCurrentUserList()
         {
+
             Dictionary<string, string> tsNickUID = new Dictionary<string, string>();
             var rc = new TeamSpeakClient(/*config.StrSavedTeamspeakHostName*/"localhost"); //TODO: Remove debug reference
             await rc.Connect();
@@ -85,138 +100,77 @@ namespace TS3DiscordBridge
 
                 }
             }
-            tsUserList = tsNickUID;
-
-            return;
+            return tsNickUID;
         }
 
-        /// <summary>
-        /// Loops through discUserList and checks if any usernames show up in tsUserList. If found, adds both keys and values to the db. if not found, searches the database to see if the discord id exists.
-        /// </summary>
-        public void CompareAndRecordMatches() 
+        public void AdminAddAliasToDB()
         {
-            string connectionString = "Data Source=" + Path.Combine(_fileio.DirectoryPath, "shoutbot.db") + ";";
-            using (var connection = new SqliteConnection(connectionString))
+            throw new NotImplementedException();
+        }
+
+        public async Task runUserComparison()
+        {
+#if DEBUG
+            var discUserList = await retrieveDiscordReactionsList();
+#else
+            var discUserList = await retrieveDiscordReactionsList();
+            var tsUserList = await retrieveTsCurrentUserList();
+#endif
+
+            //Do the main comparision here.
+            foreach (var discUser in discUserList)
             {
-                connection.Open();
+#if DEBUG //This block is the internal of the if statement below.
 
-                // Create a table if it doesn't exist
-                var command = connection.CreateCommand();
-                command.CommandText = @"CREATE TABLE IF NOT EXISTS UserMatches (
-                    DiscordUserId INTEGER PRIMARY KEY UNIQUE,
-                    DiscordUsername TEXT,
-                    TeamspeakUsername TEXT,
-                    TeamspeakUserId TEXT UNIQUE
-                )";
-                command.ExecuteNonQuery();
-                Thread.Sleep(100);
-                // Iterate through Discord dictionary
-                foreach (var discUser in discUserList)
+                    //retrieve all keys/values and send to database.
+                    UserMatch FoundUserInfo = new UserMatch();
+                    FoundUserInfo.DiscordUsername = discUser.Key;
+                    FoundUserInfo.DiscordUserId = discUser.Value;
+                    FoundUserInfo.TeamspeakUsername = "Test";
+                    FoundUserInfo.TeamspeakUserId = "testID";
+                    await _db.SaveToDB(FoundUserInfo);
+                    //Then remove the found ts user from the list.
+                    tsUserList.Remove(discUser.Key);
+
+#else
+                if (
+                    tsUserList.TryGetValue(discUser.Key, out string tsUsername)
+                   )
                 {
-                    // Check if the Teamspeak dictionary has a matching key
-                    if (tsUserList.TryGetValue(discUser.Key, out string tsUsername))
-                    {
-                        using (var cmd = new SqliteCommand(@"
-            INSERT INTO UserMatches (DiscordUsername, DiscordUserId, TeamspeakUsername, TeamspeakUserId)
-            VALUES (@DiscordUsername, @DiscordUserId, @TeamspeakUsername, @TeamspeakUserId)"))
-                        {
-                            cmd.Parameters.AddWithValue("@DiscordUsername", discUser.Key);
-                            cmd.Parameters.AddWithValue("@DiscordUserId", discUser.Value.ToString());
-                            cmd.Parameters.AddWithValue("@TeamspeakUsername", tsUsername);
-                            cmd.Parameters.AddWithValue("@TeamspeakUserId", tsUserList[tsUsername]);
-
-                            using (var transaction = connection.BeginTransaction())
-                            {
-                                cmd.Connection = connection;
-                                cmd.Transaction = transaction;
-
-                                // Execute the command
-                                cmd.ExecuteNonQuery();
-
-                                // Commit the transaction
-                                transaction.Commit();
-                            }
-                        }
-                    }
-                    else
-                    {
-                        //TODO: Fall back to SearchDatabase method to see if we can find a match
-                        //Search DB with discord username or ID, if no match, add to list of users not found.
-                        //if there is a match, check if the TS3UID matches the TS3UID in the TS3 list. if it does, don't add to list of non-matches.
-                        if (!SearchDatabase(discUser.Value)) //If we don't find a match, add to list of users not found.
-                        {
-                            discUserNotFound.Add(discUser.Key, discUser.Value.ToString());
-                        }
-
-                    }
+                    //retrieve all keys/values and send to database.
+                    UserMatch FoundUserInfo = new UserMatch();
+                    FoundUserInfo.DiscordUsername = discUser.Key;
+                    FoundUserInfo.DiscordUserId = discUser.Value;
+                    FoundUserInfo.TeamspeakUsername = tsUsername;
+                    FoundUserInfo.TeamspeakUserId = tsUserList[tsUsername];
+                    await _db.SaveToDB(FoundUserInfo);
+                    //Then remove the found ts user from the list.
+                    tsUserList.Remove(discUser.Key);
                 }
+                else
+                {
+                    //search the db for an alias, if no alias, add to list of users not found.
+                    discUserNotFound.Add(discUser.Key, discUser.Value);
+                }
+#endif
 
             }
-            File.WriteAllText(Path.Combine(_fileio.DirectoryPath, "userNotFound.txt"), string.Join(Environment.NewLine, discUserNotFound));
 
         }
 
-        /// <summary>
-        /// searches the database for a match to the search term. If a match is found, return true. If no match is found, return false.
-        /// </summary>
-        /// <param name="searchTerm">ulong discord Unique User ID</param>
-        /// <returns></returns>
-        public bool SearchDatabase(ulong searchTerm)
-        {
-            string connectionString = "Data Source=" + Path.Combine(_fileio.DirectoryPath, "shoutbot.db") + ";";
+        
 
-            using (var connection = new SqliteConnection(connectionString))
-            {
-                connection.Open();
 
-                using (var cmd = new SqliteCommand(@"
-            SELECT * FROM UserMatches
-            WHERE DiscordUsername = @SearchTerm OR TeamspeakUsername = @SearchTerm OR DiscordUserId = @SearchTerm OR TeamspeakUserId = @SearchTerm "))
-                {
-                    cmd.Parameters.AddWithValue("@SearchTerm", searchTerm);
 
-                    using (var reader = cmd.ExecuteReader())
-                    {
-                        if (reader.HasRows)
-                        {//If we have rows, we have a match.
-                            while (reader.Read())
-                            {
-                                var userMatch = new UserMatch
-                                {
-                                    DiscordUserId = Convert.ToUInt64(reader.GetInt64(reader.GetOrdinal("DiscordUserId"))),
-                                    DiscordUsername = reader.GetString(reader.GetOrdinal("DiscordUsername")),
-                                    TeamspeakUsername = reader.GetString(reader.GetOrdinal("TeamspeakUsername")),
-                                    TeamspeakUserId = reader.GetString(reader.GetOrdinal("TeamspeakUserId"))
-                                };
-                                //Check if the known teamspeakUserID exists in the list of users currently in TS.
-                                if (!tsUserList.ContainsValue(userMatch.TeamspeakUserId))
-                                {
-                                    //if it doesn't, add the user to the list of users not found.
-                                    discUserNotFound.Add(userMatch.DiscordUsername, userMatch.DiscordUserId.ToString());
 
-                                }
-                            }
-                        }
-                        else
-                        {
-                            return false;
-                        }
-                        return true;
-                    }
-                }
-            }
-        }
+
+
+        
+
+        
+
+        
     }
-
-    // Model class for database results
-    public class UserMatch
-    {
-        public string DiscordUsername { get; set; }
-        public ulong DiscordUserId { get; set; }
-        public string TeamspeakUsername { get; set; }
-        public string TeamspeakUserId { get; set; }
-    }
-
 }
 
 

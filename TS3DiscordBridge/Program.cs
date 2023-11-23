@@ -3,7 +3,6 @@ using Discord;
 using Discord.Interactions;
 using Discord.WebSocket;
 using Microsoft.Extensions.DependencyInjection;
-using Microsoft.VisualBasic;
 using System.Reflection;
 
 namespace TS3DiscordBridge
@@ -22,20 +21,25 @@ namespace TS3DiscordBridge
      * 
      *  More Details in README.MD
      *  
-     *  Current thing to do: Take the data in TaskScheduling.requiredDateTime and actually send messages regarding it.
+     *  Current thing to do: Take the data in OperationTimer.requiredDateTime and actually send messages regarding it.
      *      pass the object to some other object in discrodHandler? or do some janky shit where we pass it to disk first? or do a global variable for it omegalul.
      * 
      */
 
 
+    //TODO: implement super user settings that can only be implemented in the filesystem.
+    //TODO: Guild ID retrieval from the same place as the bot token
+    //TODO: Role ID retrival from the same place as the bot token.
+    //TODO: Stop users without the correct role running commands they shouldnt.
 
+    //TODO: Impliment a manual alias verification using modals or something.
 
     public class Program
     {
         private readonly IServiceProvider _services;
         private readonly DiscordSocketClient _client;
         private readonly FileOperations _fileio;
-        private readonly TaskScheduling _taskScheduling;
+        private readonly OperationTimer _taskScheduling;
         private readonly InteractionService _interactionService;
 
         public Program()
@@ -43,7 +47,7 @@ namespace TS3DiscordBridge
             _services = CreateProvider();
             _client = _services.GetRequiredService<DiscordSocketClient>();
             _fileio = _services.GetRequiredService<FileOperations>();
-            _taskScheduling = _services.GetRequiredService<TaskScheduling>();
+            _taskScheduling = _services.GetRequiredService<OperationTimer>();
             _interactionService = _services.GetRequiredService<InteractionService>();
         }
 
@@ -67,13 +71,14 @@ namespace TS3DiscordBridge
                     .AddSingleton(config)
                     .AddSingleton<DiscordSocketClient>()
                     .AddSingleton<botConfig>()
-                    .AddSingleton<TaskScheduling>()
+                    .AddSingleton<OperationTimer>()
                     .AddSingleton(interactionConfig)
                     .AddSingleton<InteractionService>()
                     .AddTransient<FileOperations>()
                     .AddTransient<discordHandler>()
                     .AddTransient<UserListComparison>()
                     .AddTransient<SlashCommandModule>()
+                    .AddTransient<DatabaseHandler>()
                     ;
             return collection.BuildServiceProvider();
         }
@@ -84,7 +89,7 @@ namespace TS3DiscordBridge
         //public static DiscordSocketClient client = new DiscordSocketClient();
         //FileOperations fileio = new FileOperations();
         //public static discordHandler discordHandler = new discordHandler();
-        //public static TaskScheduling taskScheduling;
+        //public static OperationTimer taskScheduling;
         //public static InteractionService interactionService = new InteractionService(client);
         static void Main(string[] args) => new Program().MainAsync(args).GetAwaiter().GetResult();
 
@@ -93,7 +98,7 @@ namespace TS3DiscordBridge
         public async Task MainAsync(string[] args)
         {
             await instantiateConfigHandler();
-            var taskScheduling = _services.GetRequiredService<TaskScheduling>(); //set next instance of requiredDateTime.
+            var taskScheduling = _services.GetRequiredService<OperationTimer>(); //set next instance of requiredDateTime.
             _client.Log += Log;
             _client.InteractionCreated += InteractionCreated;
             _interactionService.Log += Log;
@@ -142,7 +147,7 @@ namespace TS3DiscordBridge
             else
             {
                 await _fileio.createConfig();
-                
+
             }
         }
     }
