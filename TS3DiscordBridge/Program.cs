@@ -41,6 +41,7 @@ namespace TS3DiscordBridge
         private readonly FileOperations _fileio;
         private readonly OperationTimer _taskScheduling;
         private readonly InteractionService _interactionService;
+        private readonly adminInternalConfig _adminConfig;
 
         public Program()
         {
@@ -49,6 +50,7 @@ namespace TS3DiscordBridge
             _fileio = _services.GetRequiredService<FileOperations>();
             _taskScheduling = _services.GetRequiredService<OperationTimer>();
             _interactionService = _services.GetRequiredService<InteractionService>();
+            _adminConfig = _services.GetRequiredService<adminInternalConfig>();
         }
 
         static IServiceProvider CreateProvider()
@@ -56,7 +58,7 @@ namespace TS3DiscordBridge
 
             var config = new DiscordSocketConfig()
             {
-                //GatewayIntents = GatewayIntents.None 
+                GatewayIntents = GatewayIntents.None 
             };
             var interactionConfig = new InteractionServiceConfig()
             {
@@ -74,6 +76,7 @@ namespace TS3DiscordBridge
                     .AddSingleton<OperationTimer>()
                     .AddSingleton(interactionConfig)
                     .AddSingleton<InteractionService>()
+                    .AddSingleton<adminInternalConfig>()
                     .AddTransient<FileOperations>()
                     .AddTransient<discordHandler>()
                     .AddTransient<UserListComparison>()
@@ -102,7 +105,7 @@ namespace TS3DiscordBridge
             _client.Log += Log;
             _client.InteractionCreated += InteractionCreated;
             _interactionService.Log += Log;
-            await _client.LoginAsync(Discord.TokenType.Bot, _services.GetRequiredService<FileOperations>().getBotToken());
+            await _client.LoginAsync(Discord.TokenType.Bot, _adminConfig.botToken);
             await _client.StartAsync();
 
             _client.Ready += ClientOnReady;
@@ -122,7 +125,7 @@ namespace TS3DiscordBridge
         {
             //await _clearRegisteredSlashCommands();
             await _interactionService.AddModulesAsync(Assembly.GetEntryAssembly(), _services);
-            await _interactionService.RegisterCommandsToGuildAsync(175936015414984704);
+            await _interactionService.RegisterCommandsToGuildAsync(Convert.ToUInt64(_adminConfig.discordGuildID));
 
 
         }
@@ -135,7 +138,7 @@ namespace TS3DiscordBridge
 
         private async Task clearRegisteredSlashCommands()
         {
-            var guild = _client.GetGuild(175936015414984704);
+            var guild = _client.GetGuild(Convert.ToUInt64(_adminConfig.discordGuildID));
             await guild.DeleteApplicationCommandsAsync();
         }
         private async Task instantiateConfigHandler() //Check for valid config. If no valid config, create one for user to populate.

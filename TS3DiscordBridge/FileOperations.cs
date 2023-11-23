@@ -9,14 +9,18 @@ namespace TS3DiscordBridge
         private readonly botConfig _botConfig;
          readonly string directoryPath;
          readonly string configFile;
+        readonly string adminConfigFile;
 
         public string DirectoryPath { get => directoryPath; }
+        public string AdminConfigFile { get => adminConfigFile; }
+        public string ConfigFile { get => configFile; }
 
         public FileOperations(botConfig config)
         {
             _botConfig = config;
             directoryPath = Path.Combine(System.Environment.GetFolderPath(Environment.SpecialFolder.CommonApplicationData), "TS3 x Discord Bridge");
             configFile = Path.Combine(directoryPath, "config.json");
+            adminConfigFile = Path.Combine(DirectoryPath, "adminconfig.json");
         }
 
         public bool checkIfConfigExist()
@@ -73,12 +77,23 @@ namespace TS3DiscordBridge
 
         public async Task DumpConfigToJSON(botConfig instanceToDumpToJSON)
         {
-            var options = new JsonSerializerOptions { IncludeFields = true, WriteIndented = true, };
+            var options = new JsonSerializerOptions { WriteIndented = true, };
             string jsondump = JsonSerializer.Serialize(instanceToDumpToJSON, options);
             await Task.Run(() => File.WriteAllText(configFile, jsondump));
             if (File.Exists(configFile) && File.ReadAllText(configFile) == jsondump)
             { Console.WriteLine("Config Succussfully written to disk"); }
             else { Console.WriteLine("Config failed to write to disk."); }
+        }
+
+        public async Task DumpConfigToJSON(adminInternalConfig instanceToDumpToJSON)
+        {
+
+            var options = new JsonSerializerOptions { WriteIndented = true, };
+            string jsondump = JsonSerializer.Serialize(instanceToDumpToJSON, options);
+            await Task.Run(() => File.WriteAllText(adminConfigFile, jsondump));
+            if (File.Exists(adminConfigFile) && File.ReadAllText(adminConfigFile) == jsondump)
+            { Console.WriteLine("Admin Config Succussfully written to disk"); }
+            else { Console.WriteLine("Admin Config failed to write to disk."); }
         }
 
         public string getBotToken()

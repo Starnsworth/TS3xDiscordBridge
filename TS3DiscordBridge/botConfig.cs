@@ -1,4 +1,7 @@
-﻿namespace TS3DiscordBridge
+﻿using System.Net.Security;
+using System.Text.Json;
+
+namespace TS3DiscordBridge
 {
     public class botConfig
     {
@@ -135,6 +138,67 @@
         }
     }
 
+    public class adminInternalConfig //Things that should not be changeable while the bot is running. Can be get but not set
+    {
+        public string botToken { get; }
+        public string tsSeverQueryUsername { get; }
+        public string tsServerQueryPassword { get; }
+        public ulong discordGuildID { get; }
+        readonly FileOperations _fileio;
+
+        internal class adminConfigModel
+        {
+            public string MbotToken;
+            public string MtsSeverQueryUsername;
+            public string MtsServerQueryPassword;
+            public ulong  MdiscordGuildID;
+        }
+
+        public adminInternalConfig(FileOperations fileio)
+        {
+            _fileio = fileio;
+            //get the token from the disk
+            //get the ts3 server query username and password from the disk
+            var adminConfigFile = Path.Combine(_fileio.DirectoryPath, "adminconfig.json");
+
+            if (File.Exists(adminConfigFile))
+            {
+                string configString = File.ReadAllText(adminConfigFile);
+                var options = new JsonSerializerOptions { IncludeFields = true, };
+
+                var deserializeddata = JsonSerializer.Deserialize<adminConfigModel>(configString, options);
+
+                if (deserializeddata != null && deserializeddata.MbotToken != "Default Token - Change This")
+                {
+                    botToken = deserializeddata.MbotToken;
+                    tsSeverQueryUsername = deserializeddata.MtsSeverQueryUsername;
+                    tsServerQueryPassword = deserializeddata.MtsServerQueryPassword;
+                    discordGuildID = deserializeddata.MdiscordGuildID;
+                }
+                else
+                {
+                    Console.WriteLine("Invalid Config Detected!");
+                    throw new Exception("Invalid Config Detected!");
+                }
+            }
+            else
+            {
+                botToken ??= "Default Token - Change This";
+                tsSeverQueryUsername ??= "Default ServerQuery Username - Change This";
+                tsServerQueryPassword ??= "Default ServerQuery Password - Change This";
+                if (discordGuildID != 0) { discordGuildID = 0; }
+
+                _fileio.DumpConfigToJSON(this);
+                Thread.Sleep(100);
+                Console.WriteLine("No Config Found. Boilerplate has been created at: " + adminConfigFile + "\nPlease edit this file and restart the bot.");
+                throw new Exception("No Config Found. Boilerplate has been created at: " + adminConfigFile + "\nPlease edit this file and restart the bot.");
+                
+            }
+
+        }
+
+
+    }
 
 }
 
