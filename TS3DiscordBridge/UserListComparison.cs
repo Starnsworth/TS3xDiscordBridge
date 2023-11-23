@@ -27,17 +27,19 @@ namespace TS3DiscordBridge
         private readonly botConfig _botConfigHandler;
         private readonly DiscordSocketClient _discordSocketClient;
         private readonly DatabaseHandler _db;
+        private readonly adminInternalConfig _aConfig;
 
         Dictionary<string, ulong> discUserNotFound = new Dictionary<string, ulong>(); //Username, UID
         Dictionary<string, ulong> discUserList = new Dictionary<string, ulong>();
         Dictionary<string, string> tsUserList = new Dictionary<string, string>();
 
-        public UserListComparison(discordHandler discordHandler, botConfig botConfig, DiscordSocketClient client, DatabaseHandler db)
+        public UserListComparison(discordHandler discordHandler, botConfig botConfig, DiscordSocketClient client, DatabaseHandler db, adminInternalConfig aConfig)
         {
             _botConfigHandler = botConfig;
             _discordHandler = discordHandler;
             _discordSocketClient = client;
             _db = db;
+            _aConfig = aConfig;
         }
 
         //------------------------------------------//
@@ -86,9 +88,9 @@ namespace TS3DiscordBridge
         {
 
             Dictionary<string, string> tsNickUID = new Dictionary<string, string>();
-            var rc = new TeamSpeakClient(/*config.StrSavedTeamspeakHostName*/"localhost"); //TODO: Remove debug reference
+            var rc = new TeamSpeakClient(_botConfigHandler.StrSavedTeamspeakHostName); 
             await rc.Connect();
-            await rc.Login("test2", "fAosdwwI"); //TODO: Make this not hardcoded.
+            await rc.Login(_aConfig.tsSeverQueryUsername, _aConfig.tsServerQueryPassword);
             await rc.UseServer(_botConfigHandler.IntSavedTeamspeakVirtualServerID);
             var clientlist = await rc.GetClients();
             foreach (var i in clientlist)
