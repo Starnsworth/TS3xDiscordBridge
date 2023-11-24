@@ -56,7 +56,7 @@ namespace TS3DiscordBridge
             ulong watchedDiscordUserID = _botConfigHandler.UlongWatchedDiscordUserID;
             //Check the channel for the last message
             var IChannel = await _discordSocketClient.GetChannelAsync(watchedDiscordChannelID);
-            ITextChannel? toTextChannel = IChannel as SocketTextChannel;
+            var toTextChannel = IChannel as ITextChannel;
             IEnumerable<IMessage> messages = await toTextChannel.GetMessagesAsync(5).FlattenAsync();
             //compare the messages author uuid to our expected uuid
             currentMessage = parseMessageCollection(messages, Convert.ToUInt64(watchedDiscordUserID));

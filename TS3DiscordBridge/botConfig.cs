@@ -148,10 +148,13 @@ namespace TS3DiscordBridge
 
         internal class adminConfigModel
         {
-            public string MbotToken;
-            public string MtsSeverQueryUsername;
-            public string MtsServerQueryPassword;
-            public ulong  MdiscordGuildID;
+#pragma warning disable CS8618 // Non-nullable field must contain a non-null value when exiting constructor. Consider declaring as nullable.
+            public string MbotToken { get; set; }
+            public string MtsSeverQueryUsername { get; set; }
+            public string MtsServerQueryPassword { get; set; }
+            public ulong  MdiscordGuildID { get; set; }
+#pragma warning restore CS8618 // Non-nullable field must contain a non-null value when exiting constructor. Consider declaring as nullable.
+
         }
 
         public adminInternalConfig(FileOperations fileio)
@@ -168,7 +171,7 @@ namespace TS3DiscordBridge
 
                 var deserializeddata = JsonSerializer.Deserialize<adminConfigModel>(configString, options);
 
-                if (deserializeddata != null && deserializeddata.MbotToken != "Default Token - Change This")
+                if (deserializeddata.MbotToken != null && deserializeddata.MbotToken != "Default Token - Change This")
                 {
                     botToken = deserializeddata.MbotToken;
                     tsSeverQueryUsername = deserializeddata.MtsSeverQueryUsername;

@@ -58,7 +58,7 @@ namespace TS3DiscordBridge
 
             var config = new DiscordSocketConfig()
             {
-                GatewayIntents = GatewayIntents.None 
+                //GatewayIntents = GatewayIntents.none;
             };
             var interactionConfig = new InteractionServiceConfig()
             {
@@ -100,6 +100,7 @@ namespace TS3DiscordBridge
 
         public async Task MainAsync(string[] args)
         {
+
             await instantiateConfigHandler();
             var taskScheduling = _services.GetRequiredService<OperationTimer>(); //set next instance of requiredDateTime.
             _client.Log += Log;
