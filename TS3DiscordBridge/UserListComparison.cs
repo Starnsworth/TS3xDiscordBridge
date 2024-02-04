@@ -19,6 +19,8 @@ namespace TS3DiscordBridge
      *      
      */
 
+   
+
     public class UserListComparison
     {
         private readonly discordHandler _discordHandler;
@@ -43,7 +45,7 @@ namespace TS3DiscordBridge
 
 
             Dictionary<string, string> UserAliasFields = new Dictionary<string, string>();
-            UserAliasFields.Add("DiscordUserId", "INTEGER");
+            UserAliasFields.Add("DiscordUserId", "TEXT");
             UserAliasFields.Add("DiscordUsername", "TEXT");
             UserAliasFields.Add("TeamspeakUsername", "TEXT");
             UserAliasFields.Add("TeamspeakUserId", "TEXT");
@@ -142,7 +144,8 @@ namespace TS3DiscordBridge
                    
                 { 
                     //check if the discordID already exists in the db, if it does, skip it.
-                    if (_db.SearchDBForAlias(discUser.Value, KnownUserAliasDb) != null)
+                    var discIDasString = discUser.Value.ToString();
+                    if (_db.SearchDBForAlias(discIDasString, KnownUserAliasDb) != null)
                     {
                         tsUserList.Remove(discUser.Key);
                         continue;
@@ -150,7 +153,7 @@ namespace TS3DiscordBridge
                     //If user does not exist in database, add them.
                     UserMatch FoundUserInfo = new UserMatch();
                     FoundUserInfo.DiscordUsername = discUser.Key;
-                    FoundUserInfo.DiscordUserId = discUser.Value;
+                    FoundUserInfo.DiscordUserId = discUser.Value.ToString() ;
                     FoundUserInfo.TeamspeakUsername = discUser.Key;
                     FoundUserInfo.TeamspeakUserId = tsUsername;
                     await _db.SaveToDB(FoundUserInfo, KnownUserAliasDb);
@@ -160,7 +163,8 @@ namespace TS3DiscordBridge
                 //If user is in discord but not in teamspeak.
                 else
                 { 
-                    var DatabaseRecord = _db.SearchDBForAlias(discUser.Value, KnownUserAliasDb);
+                    var discIDasString = discUser.Value.ToString();
+                    var DatabaseRecord = _db.SearchDBForAlias(discIDasString, KnownUserAliasDb);
                     if (DatabaseRecord == null) //search the db for an alias, if no alias, add to list of users not found.
                     {
                         discUserNotFound.Add(discUser.Key, discUser.Value);
@@ -196,14 +200,14 @@ namespace TS3DiscordBridge
             }
             //Make Table of discUserNotFound.
             Dictionary<string, string> discNotFoundTitles = new Dictionary<string, string>();
-            discNotFoundTitles.Add("DiscordUserId", "INTEGER");
+            discNotFoundTitles.Add("DiscordUserId", "TEXT");
             discNotFoundTitles.Add("DiscordUsername", "TEXT");
             var DiscordNoTeamspeak = new DatabaseSchema("UserAliases", "Discord_No_Teamspeak", discNotFoundTitles);
             UserMatch DiscNotTs = new UserMatch();
             foreach (var item in discUserNotFound)
             {
                 DiscNotTs.DiscordUsername = item.Key;
-                DiscNotTs.DiscordUserId = item.Value;
+                DiscNotTs.DiscordUserId = item.Value.ToString();
                 await _db.SaveToDB(DiscNotTs, DiscordNoTeamspeak);
             }
         }

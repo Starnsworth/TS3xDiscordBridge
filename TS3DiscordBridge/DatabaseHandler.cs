@@ -53,9 +53,9 @@ namespace TS3DiscordBridge
                 {
                     var ListOfFields = ObjToSave.GetType().GetProperties().ToList();
                     List<System.Reflection.PropertyInfo> ListOfNotNullFields = new List<System.Reflection.PropertyInfo>(); // = ListOfFields.Where(x => x.GetValue(ObjToSave) != null).ToList();
-                    foreach(var field in ListOfFields)
+                    foreach (var field in ListOfFields)
                     {
-                        if(field.GetValue(ObjToSave) != null && !field.GetValue(ObjToSave).Equals(0UL))
+                        if (field.GetValue(ObjToSave) != null && !field.GetValue(ObjToSave).Equals(0UL))
                         {
                             ListOfNotNullFields.Add(field);
                         }
@@ -92,7 +92,7 @@ namespace TS3DiscordBridge
         /// <param name="searchTerm">ulong discord Unique User ID</param>
         /// <param name="dbToInteractWith">DatabaseSchema object that defines the database we want to interact with.</param>
         /// <returns>returns object if found. returns null if otherwise.</returns>
-        public UserMatch SearchDBForAlias(ulong searchTerm, IDatabase dbToInteractWith)
+        public UserMatch SearchDBForAlias(string searchTerm, IDatabase dbToInteractWith)
         {
             UserMatch userMatch = new UserMatch();
             using (var connection = new SqliteConnection(dbToInteractWith.DbConnectionString))
@@ -111,7 +111,7 @@ namespace TS3DiscordBridge
                         {//If we have rows, we have a match.
                             while (reader.Read())
                             {
-                                userMatch.DiscordUserId = Convert.ToUInt64(reader.GetInt64(reader.GetOrdinal("DiscordUserId")));
+                                userMatch.DiscordUserId = reader.GetString(reader.GetOrdinal("DiscordUserId"));
                                 userMatch.DiscordUsername = reader.GetString(reader.GetOrdinal("DiscordUsername"));
                                 userMatch.TeamspeakUsername = reader.GetString(reader.GetOrdinal("TeamspeakUsername"));
                                 userMatch.TeamspeakUserId = reader.GetString(reader.GetOrdinal("TeamspeakUserId"));
@@ -130,6 +130,45 @@ namespace TS3DiscordBridge
                 return userMatch;
             }
         }
+        public Dictionary<string, string> ReturnAllRecords(IDatabase dbToInteractWith)
+        {
+            Dictionary<string, string> allRecords = new Dictionary<string, string>();
+            using (var connection = new SqliteConnection(dbToInteractWith.DbConnectionString))
+            {
+                connection.Open();
+
+                string query = $"SELECT * FROM {dbToInteractWith.TableName}";
+
+                using (var cmd = new SqliteCommand(query, connection))
+                {
+                    using (var reader = cmd.ExecuteReader())
+                    {
+                        if (reader.HasRows)
+                        { //If we have rows, we have a match.
+                            while (reader.Read())
+                            {
+                                allRecords.Add(reader.GetString(0), reader.GetString(1));
+                            };
+                        }
+                        else
+                        {
+                            Console.WriteLine("No rows found.");
+                            return null;
+                        }
+                    }
+                }
+                return allRecords;
+            }
+        }
+
+
+
+
+
+
+
+
+
 
         /// <summary>
         /// Takes a tablecreate string and executes it on the DB
@@ -149,11 +188,11 @@ namespace TS3DiscordBridge
         // Model class for database results
         public class UserMatch
         { //Order matters because inserting into the db is done by index.
-            public ulong DiscordUserId { get; set; }
+            public string DiscordUserId { get; set; }
             public string DiscordUsername { get; set; }
             public string TeamspeakUserId { get; set; }
             public string TeamspeakUsername { get; set; }
-            
+
         }
 
 

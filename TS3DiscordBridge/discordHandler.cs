@@ -81,6 +81,7 @@ namespace TS3DiscordBridge
             return currentCandidate;
         }
 
+        //Below Item to be implimented in the future.
         public async Task CreateCustomScheduledItem(SocketSlashCommand command)
         {
 

@@ -4,6 +4,7 @@ using Discord.Interactions;
 using Discord.Net;
 using Discord.WebSocket;
 using System.Text.Json;
+using static TS3DiscordBridge.DatabaseHandler;
 using Colour = Discord.Color;
 using Summary = Discord.Interactions.SummaryAttribute;
 
@@ -16,13 +17,19 @@ namespace TS3DiscordBridge
         private readonly botConfig _botConfig;
         private readonly FileOperations _fileio;
         private readonly UserListComparison _userListComparison;
-        public SlashCommandModule(DiscordSocketClient discordSocketClient, InteractionService interactionService, botConfig botConfig, FileOperations fileio, UserListComparison userListComparison)
+        private readonly DatabaseHandler _db;
+
+       
+
+        
+        public SlashCommandModule(DiscordSocketClient discordSocketClient, InteractionService interactionService, botConfig botConfig, FileOperations fileio, UserListComparison userListComparison, DatabaseHandler databaseHandler)
         {
             _DiscordSocketClient = discordSocketClient;
             _interactionService = interactionService;
             _botConfig = botConfig;
             _fileio = fileio;
             _userListComparison = userListComparison;
+            _db = databaseHandler;
             
         }
 
@@ -100,8 +107,98 @@ namespace TS3DiscordBridge
             //await ModifyOriginalResponseAsync(x => x.Embed = embedBuild.Build());
         }
 
+        [SlashCommand("admin-alias-comparison", "Lets admins manually assign alias's for users that have been found.")]
+        public async Task adminAliasComparison()
+        {
+            await DeferAsync(true);
+            //query the DB and get the stored list of users without aliases.
+
+            //build a list of ts users without aliases
+            Dictionary<string, string> tsNoDiscTitles = new Dictionary<string, string>();
+            tsNoDiscTitles.Add("TeamspeakUserId", "TEXT");
+            tsNoDiscTitles.Add("TeamspeakUsername", "TEXT");
+            var TeamspeakNoDiscord = new DatabaseSchema("UserAliases", "Teamspeak_No_Discord", tsNoDiscTitles);
+            var DictTsIdUsername = _db.ReturnAllRecords(TeamspeakNoDiscord);
+
+            //build a list of discord users without aliases
+            Dictionary<string, string> discNotFoundTitles = new Dictionary<string, string>();
+            discNotFoundTitles.Add("DiscordUserId", "INTEGER");
+            discNotFoundTitles.Add("DiscordUsername", "TEXT");
+            var DiscordNoTeamspeak = new DatabaseSchema("UserAliases", "Discord_No_Teamspeak", discNotFoundTitles);
+            var DictDiscordIdUsername = _db.ReturnAllRecords(DiscordNoTeamspeak);
+
+            //Provide a dialog to an admin to select a discord user and assign their ts alias.
+            //admin selects discord user -> relate ds user to ts user -> push to known alias DB
+
+            //Dialog to select the Discord USer
+            var menuBuilder = new SelectMenuBuilder()
+                .WithPlaceholder("Select Discord User")
+                .WithCustomId("AliasFlow1")
+                .WithMinValues(1)
+                .WithMaxValues(1);
+
+            foreach (var DiscUser in DictDiscordIdUsername)
+            {
+                menuBuilder.AddOption(DiscUser.Value, DiscUser.Key);
+            }
+            var builder = new ComponentBuilder()
+                .WithSelectMenu(menuBuilder);
+            //Dialog to select the TS user.
+
+            //when the admin selects a user, the value of the select menu is the discord user ID.
+            //when an alias is confirmed. The discord user ID is used to query the DB and update the record with the alias.
 
 
+
+            var embedBuild = SlashCommandModule.constructEmbedForResponse("Alias Comparison Complete", Color.Green, "Alias Comparison Complete");
+            //await ModifyOriginalResponseAsync(x => x.Embed = embedBuild.Build());
+            await ModifyOriginalResponseAsync(x => x.Components = builder.Build());
+            //Thread.Sleep(100);
+        }
+        public async Task AliasFlowResponse(SocketMessageComponent arg)
+        {
+            switch(arg.Data.CustomId)
+            {
+                case "AliasFlow1":
+                    //Go to function that handles the response.
+                    await AliasFlow1Responder(arg);
+                    break;
+                case "AliasFlow2":
+                    //Go to function that handles the response.
+                    await AliasFlow2Responder(arg);
+                    break;
+            }
+        }
+
+        public async Task AliasFlow1Responder(SocketMessageComponent arg)
+        {
+            var selectedDiscordUser = arg.Data.Values;
+
+            //build a list of ts users without aliases
+            Dictionary<string, string> tsNoDiscTitles = new Dictionary<string, string>();
+            tsNoDiscTitles.Add("TeamspeakUserId", "TEXT");
+            tsNoDiscTitles.Add("TeamspeakUsername", "TEXT");
+            var TeamspeakNoDiscord = new DatabaseSchema("UserAliases", "Teamspeak_No_Discord", tsNoDiscTitles);
+            var DictTsIdUsername = _db.ReturnAllRecords(TeamspeakNoDiscord);
+
+            var menuBuilder = new SelectMenuBuilder()
+                .WithPlaceholder("Select User's Teamspeak Username")
+                .WithCustomId("AliasFlow2")
+                .WithMaxValues(1)
+                .WithMinValues(1);
+            foreach (var tsuser in DictTsIdUsername)
+            {
+                menuBuilder.AddOption(tsuser.Value, tsuser.Key);
+            }
+            var builder = new ComponentBuilder()
+               .WithSelectMenu(menuBuilder);
+            await ReplyAsync("Select Teamspeak username for " + selectedDiscordUser + ".", components: builder.Build());
+        }
+
+        public async Task AliasFlow2Responder(SocketMessageComponent arg)
+        {
+
+        }
 
         SlashCommandBuilder settingsFramework2 = new SlashCommandBuilder()
           .WithName("setup-bot-config")

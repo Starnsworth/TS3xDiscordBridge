@@ -110,7 +110,7 @@ namespace TS3DiscordBridge
             await _client.StartAsync();
 
             _client.Ready += ClientOnReady;
-
+            _client.SelectMenuExecuted += _services.GetRequiredService<SlashCommandModule>().AliasFlowResponse;
 
 
             //Block task until closed
